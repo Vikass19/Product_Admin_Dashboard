@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   getProducts,
   searchProducts,
@@ -25,6 +25,7 @@ export default function Products() {
   const { sort, order } = parseSort(searchParams)
   const search = (searchParams.get('search') || '').trim()
   const rawCategory = searchParams.get('category') || ''
+
   // Search wins over category (they are mutually exclusive)
   const category = search ? '' : rawCategory
 
@@ -33,7 +34,13 @@ export default function Products() {
   const [searchInput, setSearchInput] = useState(search)
   const debouncedInput = useDebounce(searchInput, SEARCH_DELAY)
 
-  const [state, setState] = useState({ status: 'loading', products: [], total: 0, error: '' })
+  const [state, setState] = useState({
+    status: 'loading',
+    products: [],
+    total: 0,
+    error: '',
+  })
+
   const [reloadKey, setReloadKey] = useState(0)
 
   // Empty values remove the param from the URL
@@ -41,31 +48,45 @@ export default function Products() {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
+
         Object.entries(changes).forEach(([key, value]) => {
-          if (value === '' || value === null || value === undefined) next.delete(key)
-          else next.set(key, String(value))
+          if (value === '' || value === null || value === undefined) {
+            next.delete(key)
+          } else {
+            next.set(key, String(value))
+          }
         })
+
         return next
       },
       { replace }
     )
   }
 
-  // Debounced input → URL. A new search goes to page 1 and clears the category.
+  // Debounced input → URL
   useEffect(() => {
     const next = debouncedInput.trim()
+
     if (next !== search) {
       updateParams(
-        { search: next, page: 1, ...(next ? { category: '' } : {}) },
+        {
+          search: next,
+          page: 1,
+          ...(next ? { category: '' } : {}),
+        },
         { replace: true }
       )
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedInput])
 
-  // URL → input, only for outside changes (Back button, edited URL)
+  // URL → input
   useEffect(() => {
-    if (search !== debouncedInput.trim()) setSearchInput(search)
+    if (search !== debouncedInput.trim()) {
+      setSearchInput(search)
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
@@ -75,36 +96,69 @@ export default function Products() {
     const rawLimit = searchParams.get('limit')
     const rawSort = searchParams.get('sort')
     const rawOrder = searchParams.get('order')
+
     const fixes = {}
 
-    if (rawPage !== null && rawPage !== String(page)) fixes.page = page
-    if (rawLimit !== null && rawLimit !== String(limit)) fixes.limit = limit
-    if (rawSort !== null && rawSort !== sort) fixes.sort = sort // '' removes it
-    if (!sort && rawOrder !== null) fixes.order = ''
-    if (sort && rawOrder !== null && rawOrder !== order) fixes.order = order
-    if (search && rawCategory) fixes.category = ''
+    if (rawPage !== null && rawPage !== String(page)) {
+      fixes.page = page
+    }
 
-    if (Object.keys(fixes).length > 0) updateParams(fixes, { replace: true })
+    if (rawLimit !== null && rawLimit !== String(limit)) {
+      fixes.limit = limit
+    }
+
+    if (rawSort !== null && rawSort !== sort) {
+      fixes.sort = sort
+    }
+
+    if (!sort && rawOrder !== null) {
+      fixes.order = ''
+    }
+
+    if (sort && rawOrder !== null && rawOrder !== order) {
+      fixes.order = order
+    }
+
+    if (search && rawCategory) {
+      fixes.category = ''
+    }
+
+    if (Object.keys(fixes).length > 0) {
+      updateParams(fixes, { replace: true })
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  // Remove an unknown category (?category=abc) once the category list is loaded
+  // Remove unknown category
   useEffect(() => {
     if (categoriesStatus !== 'success' || !rawCategory) return
+
     if (!categories.some((c) => c.slug === rawCategory)) {
-      updateParams({ category: '', page: 1 }, { replace: true })
+      updateParams(
+        {
+          category: '',
+          page: 1,
+        },
+        { replace: true }
+      )
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoriesStatus, rawCategory])
 
   // Fetch products
   useEffect(() => {
-    // Wait for categories so an invalid ?category= doesn't flash an empty list
     if (category && categoriesStatus === 'loading') return
 
     const controller = new AbortController()
     let ignore = false
-    setState((prev) => ({ ...prev, status: 'loading', error: '' }))
+
+    setState((prev) => ({
+      ...prev,
+      status: 'loading',
+      error: '',
+    }))
 
     const common = {
       limit,
@@ -115,67 +169,149 @@ export default function Products() {
     }
 
     let request
-    if (search) request = searchProducts({ q: search, ...common })
-    else if (category) request = getProductsByCategory({ category, ...common })
-    else request = getProducts(common)
+
+    if (search) {
+      request = searchProducts({
+        q: search,
+        ...common,
+      })
+    } else if (category) {
+      request = getProductsByCategory({
+        category,
+        ...common,
+      })
+    } else {
+      request = getProducts(common)
+    }
 
     request
       .then((data) => {
         if (ignore) return
+
         const totalPages = getTotalPages(data.total, limit)
+
         if (page > totalPages) {
-          updateParams({ page: totalPages }, { replace: true })
+          updateParams(
+            {
+              page: totalPages,
+            },
+            { replace: true }
+          )
+
           return
         }
-        setState({ status: 'success', products: data.products, total: data.total, error: '' })
+
+        setState({
+          status: 'success',
+          products: data.products,
+          total: data.total,
+          error: '',
+        })
       })
       .catch((err) => {
         if (ignore || err.name === 'CanceledError') return
-        setState({ status: 'error', products: [], total: 0, error: err.message })
+
+        setState({
+          status: 'error',
+          products: [],
+          total: 0,
+          error: err.message,
+        })
       })
 
     return () => {
       ignore = true
       controller.abort()
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, search, category, sort, order, categoriesStatus, reloadKey])
+  }, [
+    page,
+    limit,
+    search,
+    category,
+    sort,
+    order,
+    categoriesStatus,
+    reloadKey,
+  ])
 
   function handlePageChange(newPage) {
-    updateParams({ page: newPage })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    updateParams({
+      page: newPage,
+    })
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
   }
 
   function handleLimitChange(newLimit) {
-    updateParams({ limit: newLimit, page: 1 })
+    updateParams({
+      limit: newLimit,
+      page: 1,
+    })
   }
 
   // Picking a category clears the search
   function handleCategoryChange(value) {
-    updateParams({ category: value, search: '', page: 1 })
+    updateParams({
+      category: value,
+      search: '',
+      page: 1,
+    })
+
     setSearchInput('')
   }
 
   function handleSortChange(value) {
     if (!value) {
-      updateParams({ sort: '', order: '', page: 1 })
+      updateParams({
+        sort: '',
+        order: '',
+        page: 1,
+      })
     } else {
       const [field, dir] = value.split('-')
-      updateParams({ sort: field, order: dir, page: 1 })
+
+      updateParams({
+        sort: field,
+        order: dir,
+        page: 1,
+      })
     }
   }
 
   const totalPages = getTotalPages(state.total, limit)
   const { start, end } = getRange(page, limit, state.total)
-  const showControls = state.status !== 'error' && state.total > 0
+
+  const showControls =
+    state.status !== 'error' && state.total > 0
 
   let emptyMessage = 'No products found.'
-  if (search) emptyMessage = `No products found for "${search}".`
-  else if (category) emptyMessage = 'No products in this category.'
+
+  if (search) {
+    emptyMessage = `No products found for "${search}".`
+  } else if (category) {
+    emptyMessage = 'No products in this category.'
+  }
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Products</h1>
+      {/* Page heading + Add Product */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">
+          Products
+        </h1>
+
+        <Link
+          to="/products/new"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          + Add Product
+        </Link>
+      </div>
 
       <ProductFilters
         searchInput={searchInput}
@@ -193,26 +329,36 @@ export default function Products() {
       {state.status === 'loading' && <Loader />}
 
       {state.status === 'error' && (
-        <ErrorState message={state.error} onRetry={() => setReloadKey((k) => k + 1)} />
+        <ErrorState
+          message={state.error}
+          onRetry={() => setReloadKey((k) => k + 1)}
+        />
       )}
 
-      {state.status === 'success' && state.products.length === 0 && (
-        <EmptyState message={emptyMessage} />
-      )}
+      {state.status === 'success' &&
+        state.products.length === 0 && (
+          <EmptyState message={emptyMessage} />
+        )}
 
-      {state.status === 'success' && state.products.length > 0 && (
-        <>
-          <ProductTable products={state.products} />
-          <ProductGrid products={state.products} />
-        </>
-      )}
+      {state.status === 'success' &&
+        state.products.length > 0 && (
+          <>
+            <ProductTable products={state.products} />
+            <ProductGrid products={state.products} />
+          </>
+        )}
 
       {showControls && (
         <div className="mt-6 space-y-3">
-          <p className="text-sm text-gray-600 text-center">
+          <p className="text-center text-sm text-gray-600">
             Showing {start}–{end} of {state.total}
           </p>
-          <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
     </div>
