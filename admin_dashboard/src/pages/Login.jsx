@@ -55,7 +55,7 @@ export default function Login() {
         noValidate
         className="w-full max-w-sm bg-white rounded-lg shadow p-6 space-y-4"
       >
-        <h1 className="text-2xl font-bold text-center">Admin Login</h1>
+        <h1 className="text-2xl font-bold text-red-700 text-center">Admin Login</h1>
 
         {apiError && (
           <div role="alert" className="bg-red-50 text-red-700 text-sm p-3 rounded">
