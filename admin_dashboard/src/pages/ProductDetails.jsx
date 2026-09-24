@@ -68,12 +68,22 @@ export default function ProductDetails() {
           The product you are looking for does not exist.
         </p>
 
-        <button
-          onClick={() => navigate('/products')}
-          className="mt-6 rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700"
-        >
-          Back to Products
-        </button>
+      {/* Action buttons */}
+<div className="mb-6 flex flex-wrap gap-3">
+  <button
+    onClick={() => navigate('/products')}
+    className="rounded-lg border px-4 py-2 hover:bg-gray-100"
+  >
+    ← Back to Products
+  </button>
+
+  <button
+    onClick={() => navigate(`/products/${product.id}/edit`)}
+    className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+  >
+    Edit Product
+  </button>
+</div>
       </div>
     )
   }

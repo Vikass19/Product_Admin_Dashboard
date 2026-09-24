@@ -87,7 +87,7 @@ export default function AddProduct() {
 
       const product = await createProduct(payload)
 
-      navigate(`/products/${product.id}`)
+      navigate('/products')
     } catch (error) {
       setApiError(
         error.response?.data?.message ||
@@ -107,6 +107,8 @@ export default function AddProduct() {
       >
         ← Back to Products
       </button>
+
+  
 
       <div className="rounded-lg border bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-bold">
