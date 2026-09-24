@@ -1,18 +1,27 @@
 import api from './axios'
 
-export async function getProducts({ limit = 10, skip = 0, sortBy, order, signal } = {}) {
+// Shared by list, search and category requests
+function buildListParams({ limit = 10, skip = 0, sortBy, order, q } = {}) {
   const params = { limit, skip }
+  if (q) params.q = q
   if (sortBy) {
     params.sortBy = sortBy
-    params.order = order || 'asc'
+    params.order = order === 'desc' ? 'desc' : 'asc'
   }
-  const { data } = await api.get('/products', { params, signal })
+  return params
+}
+
+export async function getProducts({ limit, skip, sortBy, order, signal } = {}) {
+  const { data } = await api.get('/products', {
+    params: buildListParams({ limit, skip, sortBy, order }),
+    signal,
+  })
   return data // { products, total, skip, limit }
 }
 
-export async function searchProducts({ q, limit = 10, skip = 0, signal } = {}) {
+export async function searchProducts({ q, limit, skip, sortBy, order, signal } = {}) {
   const { data } = await api.get('/products/search', {
-    params: { q, limit, skip },
+    params: buildListParams({ q, limit, skip, sortBy, order }),
     signal,
   })
   return data
@@ -20,19 +29,14 @@ export async function searchProducts({ q, limit = 10, skip = 0, signal } = {}) {
 
 export async function getProductsByCategory({
   category,
-  limit = 10,
-  skip = 0,
+  limit,
+  skip,
   sortBy,
   order,
   signal,
 } = {}) {
-  const params = { limit, skip }
-  if (sortBy) {
-    params.sortBy = sortBy
-    params.order = order || 'asc'
-  }
   const { data } = await api.get(`/products/category/${encodeURIComponent(category)}`, {
-    params,
+    params: buildListParams({ limit, skip, sortBy, order }),
     signal,
   })
   return data
